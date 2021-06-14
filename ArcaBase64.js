@@ -1,17 +1,81 @@
 // ==UserScript==
 // @name         Arca base64 autodecoder
-// @version      1.1
+// @version      1.2
 // @author       인지질이중층
 // @match        https://arca.live/b/*/*
 // @run-at       document-end
 // ==/UserScript==
 
 const regArr = [
-    /(aHR0cDovL|aHR0cHM6Ly)(\w|=)*(?=[^=\w])/g,
-    /(YUhSMGNEb3ZM|YUhSMGNITTZMe)(\w|=)*(?=[^=\w])/g,
-    /(WVVoU01HTkViM1pN|WVVoU01HTklUVFpNZ)(\w|=)*(?=[^=\w])/g,
+    /(aHR0cDovL|aHR0cHM6Ly)(\w|=|\+|\/)*(?=[^\+=\w\/])/g,
+    /(YUhSMGNEb3ZM|YUhSMGNITTZMe)(\w|=|\+|\/)*(?=[^\+=\w\/])/g,
+    /(WVVoU01HTkViM1pN|WVVoU01HTklUVFpNZ)(\w|=|\+|\/)*(?=[^\+=\w\/])/g,
 ]
-const regInvalid = /[^A-Za-z0-9+\/=]/;
+const regInvalid = /[^\w\+\/=]/;
+
+var Base64 = {
+    _keyStr : "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/=",
+    decode : function (input) {
+        var output = "";
+        var chr1, chr2, chr3;
+        var enc1, enc2, enc3, enc4;
+        var i = 0;
+
+        input = input.replace(/[^A-Za-z0-9\+\/\=]/g, "");
+
+        while (i < input.length) {
+            enc1 = this._keyStr.indexOf(input.charAt(i++));
+            enc2 = this._keyStr.indexOf(input.charAt(i++));
+            enc3 = this._keyStr.indexOf(input.charAt(i++));
+            enc4 = this._keyStr.indexOf(input.charAt(i++));
+
+            chr1 = (enc1 << 2) | (enc2 >> 4);
+            chr2 = ((enc2 & 15) << 4) | (enc3 >> 2);
+            chr3 = ((enc3 & 3) << 6) | enc4;
+
+            output = output + String.fromCharCode(chr1);
+
+            if (enc3 != 64) {
+                output = output + String.fromCharCode(chr2);
+            }
+            if (enc4 != 64) {
+                output = output + String.fromCharCode(chr3);
+            }
+        }
+
+        output = Base64._utf8_decode(output);
+        return output;
+    },
+    // private method for UTF-8 decoding
+    _utf8_decode : function (utftext) {
+        var string = "";
+        var i = 0;
+        var c = 0;
+        var c1 = 0;
+        var c2 = 0;
+        var c3 = 0;
+
+        while ( i < utftext.length ) {
+            c = utftext.charCodeAt(i);
+            if (c < 128) {
+                string += String.fromCharCode(c);
+                i++;
+            }
+            else if((c > 191) && (c < 224)) {
+                c2 = utftext.charCodeAt(i+1);
+                string += String.fromCharCode(((c & 31) << 6) | (c2 & 63));
+                i += 2;
+            }
+            else {
+                c2 = utftext.charCodeAt(i+1);
+                c3 = utftext.charCodeAt(i+2);
+                string += String.fromCharCode(((c & 15) << 12) | ((c2 & 63) << 6) | (c3 & 63));
+                i += 3;
+            }
+        }
+        return string;
+    }
+}
 
 var hindex = 0;
 var lastSelected = document;
@@ -19,7 +83,7 @@ var lastSelectedTime = Date.now();
 
 function createLink(index, url, depth) {
     return '<a href="' + url
-           + '" target="_blank">' + index.toString()
+           + '">' + index.toString()
            + '번째 링크 (base64 깊이: ' + depth.toString()
            + ')</a>'
 }
@@ -27,9 +91,9 @@ function createLink(index, url, depth) {
 function replacerGen(numIter) {
     return function(match) {
         try {
-            var converted = atob(match);
+            var converted = Base64.decode(match);
             for(var i=0; i<numIter; i++) {
-                converted = atob(converted);
+                converted = Base64.decode(converted);
             }
             hindex++;
             return createLink(hindex, converted, numIter+1);
@@ -37,7 +101,7 @@ function replacerGen(numIter) {
             console.log(e);
             console.log('base64 변환 실패:' + match);
         }
-        return match + 'base64 변환 실패.';
+        return '[base64 변환 실패:' + match + ']';
     }
 }
 
@@ -45,9 +109,9 @@ function selClicked(event) {
     var sel = document.getSelection().toString();
     if (!sel.match(regInvalid)
         && sel.length >= 10
-        && lastSelectedTime + 100 < Date.now()) {
+        && lastSelectedTime + 200 < Date.now()) {
         try {
-            var converted = atob(sel);
+            var converted = Base64.decode(sel);
         } catch (e) {
             return;
         } finally {

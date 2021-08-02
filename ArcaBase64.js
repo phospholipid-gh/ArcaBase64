@@ -1,6 +1,6 @@
 // ==UserScript==
 // @name         Arca base64 autodecoder
-// @version      1.2
+// @version      1.3
 // @author       인지질이중층
 // @match        https://arca.live/b/*/*
 // @run-at       document-end

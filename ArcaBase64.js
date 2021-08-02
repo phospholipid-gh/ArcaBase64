@@ -125,13 +125,17 @@ function selClicked(event) {
     'use strict';
 
     var article = document.getElementsByClassName("article-content")[0];
-    var comments = document.getElementsByClassName("list-area")[0];
-
     for(var i=0; i<3; i++) {
         article.innerHTML = article.innerHTML.replaceAll(regArr[i], replacerGen(i));
-        comments.innerHTML = comments.innerHTML.replaceAll(regArr[i], replacerGen(i));
     }
 
+    var comments = document.getElementsByClassName("list-area");
+    if(comments.length != 0) {
+        for(var i=0; i<3; i++) {
+            comments[0].innerHTML = comments[0].innerHTML.replaceAll(regArr[i], replacerGen(i));
+        }
+    }
+    
     document.addEventListener('selectionchange', function() {
         var sel = document.getSelection().anchorNode;
         if(sel) {
